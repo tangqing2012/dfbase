@@ -20,8 +20,9 @@ export const ARROW_ROTATION = {
 /**
  * 三角箭头按钮类
  * @class
+ * @author David Tang<davidtang2018@163.com>
  * @extends Shape
- * @memberof DF
+ * @memberof DJ
  */
 export class ArrowButton extends Shape  {
 	constructor(arrowRotation, style) {
@@ -56,10 +57,9 @@ export class ArrowButton extends Shape  {
 		if (this._arrowRotation==undefined) return;
 
 		//以中心点变换指定角度的坐标矩阵
-        let g = this._graphics;
-        g.beginFill(ARROW_COLOR);
+        this.beginFill(ARROW_COLOR);
         let points = [new PIXI.Point(0, -this._arrowHeight / 2), new PIXI.Point(this._arrowWidth / 2, this._arrowHeight / 2), new PIXI.Point(-this._arrowWidth / 2, this._arrowHeight / 2)];
-        utils.drawPoints(g, points, new PIXI.Point(this._width / 2, this._height / 2), this._arrowRotation);
-        g.endFill();
+        utils.drawPoints(this, points, new PIXI.Point(this._width / 2, this._height / 2), this._arrowRotation);
+        this.endFill();
 	}
 }

@@ -7,8 +7,9 @@ const DEFAULT_TEXT = "Button"
 /**
  * 按钮类
  * @class
+ * @author David Tang<davidtang2018@163.com>
  * @extends Shape
- * @memberof DF
+ * @memberof DJ
  */
 export class TextButton extends Shape {
     constructor(text, style) {
@@ -16,8 +17,7 @@ export class TextButton extends Shape {
 
         this._textStyle = new PIXI.TextStyle({
             fontFamily: "Arial", 
-            fontSize: 12,
-            fill: "black"
+            fontSize: 12
         });
  
         let t = text?text:DEFAULT_TEXT;
@@ -43,17 +43,22 @@ export class TextButton extends Shape {
     }
 
     redraw() {
-        super.redraw();
-
         //避免super调用redraw时未初始化的问题
        if (this.title===undefined) return;
 
-        this.title.x = (this._width - this.title.width) / 2;
-        this.title.y = (this._height - this.title.height) / 2;            
+        super.redraw();
+        
         if (this._state==SHAPE_STATE.HOVER){
             this.title.x = this.title.x + 1;
             this.title.y = this.title.y + 1;
         }
+        else if (this._state==SHAPE_STATE.FOCUS){
+            this.title.style.fontWeight = "bold";
+        } else {
+            this.title.style.fontWeight = "normal";            
+        }
+        this.title.x = (this._width - this.title.width) / 2;
+        this.title.y = (this._height - this.title.height) / 2;            
     }
 
     /**

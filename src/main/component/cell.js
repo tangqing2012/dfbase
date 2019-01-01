@@ -2,75 +2,84 @@ import { PixiUtils as utils } from "./pixiutils";
 
 const LINE_COLOR = 0xA0A0A0
 const BACKGROUND_COLOR = 0xFDFDFD
-const HOVER_CELL_COLOR = 0xE8E8E8
+const HOVER_CELL_COLOR = 0xF0F0F0
 const FOCUS_CELL_COLOR = 0xE0E0E0
 const FOCUS_OUTLINE_COLOR = 0x808080
-const COLUMN_COLOR = 0xE0E0E0
+const COLUMN_COLOR = 0xE8E8E8
 const CELL_WIDTH = 60
 const CELL_HEIGHT = 30
+
+const DBLCLICK_INTERVAL = 300
 
 /**
  * 网格类
  * 提供鼠标焦点功能，获取当前光标位置的单元格
  * @class
- * @extends PIXI.Container
- * @memberof DF
+ * @author David Tang<davidtang2018@163.com>
+ * @extends PIXI.Graphics
+ * @memberof DJ
  */
-export class Cell extends PIXI.Container {
+export class Cell extends PIXI.Graphics {
 	constructor(column, row, style) {
 		super();
         this.interactive = true;
+
 		this._cellWidth = CELL_WIDTH;
 		this._cellHeight = CELL_HEIGHT;
 		this._column = column;
 		this._row = row;
 		this._lineColor = LINE_COLOR;
 		this._backgroundColor = BACKGROUND_COLOR;
-		this._autoFocus = true;
 		this._focusCell = undefined;
 		this._currentCell = undefined;
 		this._columnColors = undefined;
+		this._data = undefined;
+		this._autoFocus = true;
+		this._enableFocusCell = false;
+		this._enableHoverCell = false;
+		this._enableDragCell = false;
+        this._DblDown = false
 
         if (style != undefined) {
             this._cellWidth = style.cellWidth!=undefined ? style.cellWidth : this._cellWidth;
             this._cellHeight = style.cellHeight!=undefined ? style.cellHeight : this._cellHeight;
             this._backgroundColors = style.backgroundColors!=undefined ? style.backgroundColors : this._backgroundColors;
             this._lineColor = style.lineColor!=undefined ? style.lineColor : this._lineColor;
-  			if (style.enableHover) {
-		        this.on("pointermove", this.mouseHoverEvent);
-		        this.on("pointerout", this.mouseHoverEvent);  				
-		        //PIXI.ticker.shared.add(this.tickerEvent, this)
-  			}
-  			if (style.enableFoucs) {
-  				this.on("pointerdown", this.clickEvent);
-  			}
-  			this._autoFocus = style.autoFocus!=undefined ? style.autoFocus : this._autoFocus;
+
+ 			this._autoFocus = style.autoFocus!=undefined ? style.autoFocus : this._autoFocus;
+  			this._enableFocusCell = style.enableFocusCell!=undefined ? style.enableFocusCell : this._enableFocusCell;
+  			this._enableHoverCell = style.enableHoverCell!=undefined ? style.enableHoverCell : this._enableHoverCell;
+  			this._enableDragCell =  style.enableDragCell!=undefined ? style.enableDragCell : this._enableDragCell;
         }
 
-		this._graphics = new PIXI.Graphics();
-        this.addChild(this._graphics);
+        this.on("pointerdown", this.pointerDownEvent.bind(this));
+        this.on("pointerout", this.pointerOutEvent.bind(this));
+
+        if (this._enableDragCell || this._enableHoverCell) {
+	        this.on("pointerup", this.pointerUpEvent.bind(this));
+			this.on("pointermove", this.pointerMoveEvent.bind(this));
+	        this.on("pointerupoutside", this.pointerUpOutsideEvent.bind(this));
+        }
+
         this.redraw();
 	}
-	// tickerEvent(deltaTime) {
-	// 	if (this._currentCell && this._currentCell!=this._previousCell)
-	// 		this.redraw();
-	// }
 
 	redraw() {
-		this._width = this._cellWidth * this._column;
-		this._height = this._cellHeight * this._row;
-		let g = this._graphics;
-		g.clear();
+		// David: 避免边界线条显示不完整
+		this._width = this._cellWidth * this._column + 1;
+		this._height = this._cellHeight * this._row + 1;
+		// David: 避免并列网格时干扰pointermove事件
+   		// this.hitArea = new PIXI.Rectangle(1,1,this._width-1,this._height-1);
+
 		//背景
-		g.beginFill(this._backgroundColor);
-		g.lineStyle(1, this._lineColor);
-		g.drawRect(0.5, 0.5, this._width-0.5, this._height-0.5).endFill();
+		this.clear().beginFill(this._backgroundColor).lineStyle(0, this._lineColor);
+		this.drawRect(0, 0, this._width, this._height).endFill();
 		//绘制列颜色
 		if (this._columnColors && this._columnColors.length>0) {
 			//console.log(this._columnColors);
 			this._columnColors.forEach(x=>{
-				g.beginFill(x.color!=undefined ? x.color : COLUMN_COLOR);
-				g.lineStyle(0).drawRect(
+				this.beginFill(x.color!=undefined ? x.color : COLUMN_COLOR);
+				this.lineStyle(0).drawRect(
 					x.column * this.cellWidth+2,
 					1,
 					this.cellWidth - 3,
@@ -79,21 +88,21 @@ export class Cell extends PIXI.Container {
 			})
 		}
 		//列
-		g.lineStyle(1, this._lineColor);
+		this.lineStyle(1, this._lineColor);
 		for (let i=0; i<=this._column; i++) {
-			let x = i * this._cellWidth + 0.5;
-			g.moveTo(x, 0).lineTo(x, this._height);
+			let x = i * this._cellWidth+0.5;
+			this.moveTo(x, 0).lineTo(x, this._height);
 		}
 		//行
 		for (let i=0; i<=this._row; i++) {
-			let y = i * this._cellHeight + 0.5;
-			g.moveTo(0, y).lineTo(this._width, y);
+			let y = i * this._cellHeight+0.5;
+			this.moveTo(0, y).lineTo(this._width, y);
 		}
 		//绘制当前鼠标所在单元
-		if (this._currentCell) {
+		if (this._enableHoverCell && this._currentCell) {
 			//console.log(this._currentCell);
-			g.beginFill(HOVER_CELL_COLOR);
-			g.lineStyle(0).drawRect(
+			this.beginFill(HOVER_CELL_COLOR);
+			this.lineStyle(0).drawRect(
 				this._currentCell.column * this.cellWidth + 1, 
 				this._currentCell.row * this.cellHeight + 1, 
 				this.cellWidth - 2, 
@@ -101,44 +110,112 @@ export class Cell extends PIXI.Container {
 			).endFill();
 		}
 		//绘制当前聚焦单元
-		if (this._focusCell) {
-			g.beginFill(FOCUS_CELL_COLOR);
-			g.lineStyle(2, FOCUS_OUTLINE_COLOR).drawRect(
-				this._focusCell.column * this.cellWidth + 0.5, 
-				this._focusCell.row * this.cellHeight + 0.5, 
+		if (this._enableFocusCell && this._focusCell) {
+			this.beginFill(FOCUS_CELL_COLOR);
+			this.lineStyle(1, FOCUS_OUTLINE_COLOR).drawRect(
+				this._focusCell.column*this.cellWidth, 
+				this._focusCell.row*this.cellHeight, 
 				this.cellWidth, 
 				this.cellHeight).endFill();
 		}
 	}
 
-	clickEvent(event) {
-		let self = event.currentTarget;
-		let focusCell = self.getCurrentCell(event);
-		if (!self.focus) {
-			utils.cancelFocus(self);
+	pointerDownEvent(event) {
+		let cell = this._getCurrentCell(event);
+		//设置双击间隔
+        setTimeout(()=>{
+            this._DblDown = false;
+        }, DBLCLICK_INTERVAL);
+        if (this._DblDown) {
+            this._DblDown = false;
+            //间隔内再次点击触发双击
+			this.emit("dblClickCell", {column: cell.column, row: cell.row});
+        } else {
+        	this._DblDown = true;
+        }
+        //触发单击
+		this.emit("clickCell", {column: cell.column, row: cell.row});
+		let pt = new PIXI.Point(event.data.global.x, event.data.global.y);
+		//记录鼠标按下位置及显示位置
+		this._data = {
+			startPt: pt,
+		 	startCell: cell
 		}
-		if (focusCell != self._focusCell) {
-			self._focusCell = focusCell;
-			self.redraw();
+		if (this._enableFocusCell) {
+			if (!this.focus) {
+				utils.cancelFocus(this);
+			}
+			if (cell!=this._focusCell) {
+				this._focusCell = cell;
+				this.redraw();
+			}
 		}
-		this.emit("clickCell", {column: focusCell.column, row: focusCell.row});
+		if (this._enableDragCell) {
+		    this._dragging = true;
+		}
 	}
 
-    mouseHoverEvent(event) {
-    	let self = event.currentTarget
-        if (event.type == "pointermove"  && event.currentTarget._graphics.containsPoint(event.data.global)) {   	
-            //self._isHover = true;
-            self.cursor = "pointer";
-            let currentCell = self.getCurrentCell(event);
-            if (currentCell != self._currentCell) {
-            	self._currentCell = currentCell;
-            	this.redraw();
-            }
-        }
-        else if (event.type == "pointerout") {
-            self._currentCell = undefined;
-            self.cursor = "auto";
-        }
+    pointerUpEvent(event) {
+    	if (this._data==undefined) return;
+
+		let cell = this._getCurrentCell(event);
+    	let startCell = this._data.startCell;
+	    if (this._dragging) {
+			if (startCell.column!=cell.column || startCell.row!=cell.row) {
+				this.emit("dragCell", {start: startCell, end: cell})
+			}
+			if (this._enableFocusCell) {
+				if (!this.focus) {
+					utils.cancelFocus(this);
+				}
+				if (cell!=this._focusCell) {
+					this._focusCell = cell;
+					this.redraw();
+				}
+			}
+	    }
+	    this._dragging = false;
+	    this._data = undefined;
+	    this.redraw();
+    }
+
+    pointerMoveEvent(event) {
+    	let pt = this.toLocal(event.data.global);
+    	// David: 观察是否会出现无法切换情况
+    	//if (this.hitArea.contains(pt.x, pt.y)) {
+    	if (this.containsPoint(event.data.global)) {
+			if (this._enableHoverCell) {
+				let cell = this._getCurrentCell(event);
+	            if (this._currentCell==undefined || cell.column!=this._currentCell.column || cell.row!=this._currentCell.row) {
+	            	this._currentCell = cell;
+	            	this.redraw();
+	            }
+	        } 
+	        if (this._dragging) {
+		    	// console.log("cell", this.hitArea, pt);
+				let p = new PIXI.Point(event.data.global.x, event.data.global.y);
+			 	this.emit("dragging", {ox: p.x-this._data.startPt.x, oy: p.y-this._data.startPt.y});
+		    }   		
+            //David: 此处不能阻止事件冒泡，需要触发网格上其他控件相应                
+            //event.stopPropagation();
+    	}
+    }
+
+    pointerOutEvent(event) {
+        this._currentCell = undefined;
+        this._dragging = false;
+        this._data = undefined;
+        this._DblDown = false;
+        this.redraw();
+    }
+
+    pointerUpOutsideEvent(event) {
+        this._currentCell = undefined;
+        this._focusCell = undefined;
+        this._dragging = false;
+        this._data = undefined;
+        this._DblDown = false;
+        this.redraw();
     }
 
 	/**
@@ -146,7 +223,7 @@ export class Cell extends PIXI.Container {
 	 * @param  {Event} event 事件对象
 	 * @return {column:..., row:...}  网格位置
 	 */
-	getCurrentCell(event) {
+	_getCurrentCell(event) {
 		let self = event.currentTarget;
 		let lp = event.data.getLocalPosition(self);
 		//console.log(lp);
@@ -163,8 +240,14 @@ export class Cell extends PIXI.Container {
 	 * @return {integer} 当前网格的列数   
 	 */
 	set column(value) {
-		this._column = value;
-		this.redraw();
+		if (value!=this._column) {
+			this._column = value;
+			if (this._focusCell!=undefined && this._focusCell.column>=value) {
+				this._focusCell = undefined;
+			}
+			this._currentCell = undefined;
+			this.redraw();			
+		}
 	}
 	get column() {
 		return this._column;
@@ -176,8 +259,14 @@ export class Cell extends PIXI.Container {
 	 * @return {integer} 当前网格的行数   
 	 */
 	set row(value) {
-		this._row = value;
-		this.redraw();
+		if (value!=this._row) {
+			this._row = value;
+			if (this._focusCell!=undefined && this._focusCell.row>=value) {
+				this._focusCell = undefined;
+			}
+			this._currentCell = undefined;
+			this.redraw();
+		}
 	}
 	get row() {
 		return this._row;
@@ -207,28 +296,6 @@ export class Cell extends PIXI.Container {
 	}
 	get cellHeight() {
 		return this._cellHeight;
-	}
-
-	/**
-	 * 返回整个网格的宽度
-	 */
-	get width() {
-		return this._width;
-	}
-	/**
-	 * 返回整个网格的高度
-	 */
-	get height() {
-		return this._height;
-	}
-	
-	/**
-	 * 设置网格线绘制颜色
-	 * @param  {string|integer} value '#00FF00'
-	 */
-	set lineColor(value) {
-		this._lineColor = value;
-		this.redraw()
 	}
 
 	/**

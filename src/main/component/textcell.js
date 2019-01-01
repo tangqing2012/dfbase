@@ -23,105 +23,110 @@ export const TEXT_ALIGN = {
 /**
  * 文字网格类
  * @class
+ * @author David Tang<davidtang2018@163.com>
  * @extends Cell
- * @memberof DF
+ * @memberof DJ
  */
 export class TextCell extends Cell {
 	constructor(column, row, style) {
 		super(column, row, style);
+		// this._cell = new Cell(column, row, style);
+		// this.addChild(this._cell);
 
 		this._textBaseLine = TEXT_BASE_LINE.TOP;
 		this._textAlign = TEXT_ALIGN.LEFT;
         this._textStyle = new PIXI.TextStyle({
             fontFamily: "Arial", 
-            fontSize: 10,
-            fill: "black"
+            fontSize: 10
         });
 		this._text = new Array();
 
         if (style != undefined) {
-            this._textBaseLine = style.textBaseLine || this._textBaseLine;
-            this._textAlign = style.textAlign || this._textAlign;
-            this._textStyle = style.textStyle || this._textStyle;
-            this._data = style.data || this._data;
-
-	        if (style.enableDrag) {
-				this.on("pointerdown", e => {
-				    this._dragging = true;
-					let cell = super.getCurrentCell(e);
-					let text = this._text[cell.row][cell.column];
-					let pt = text.toLocal(e.data.global);
-					//记录鼠标按下位置及显示位置
-					this._startData = {
-						point: pt,
-					 	cell: cell
-					}
-				})
-				this.on("pointerup", e => {
-				    //this._block.alpha = 1;
-				    if (this._dragging) {
-				    	let startCell = this._startData.cell;
-						let cell = super.getCurrentCell(e);
-						if (startCell.column!=cell.column || startCell.row!=cell.row) {
-							this.emit("dragCell", {start: startCell, end: cell})
-						}
-				    }
-				    this._dragging = false;
-				    this._startData = null;
-					this.redraw();
-				});
-				this.on("pointerupoutside", e => {
-				    //this._block.alpha = 1;
-				    this._dragging = false;
-				    this._startData = null;
-				    this.redraw();
-				});
-				this.on("pointermove", e => {
-				    if (this._dragging) {
-						let startPt = this._startData.point;
-						let c = this._startData.cell;
-						let text = this._text[c.row][c.column];
-						let pt = text.toLocal(e.data.global);
-					 	let dY = pt.y - startPt.y;
-					 	let dX = pt.x - startPt.x;
-						//console.log(pt, startPt, dX, dY);
-						text.x +=dX;
-						text.y +=dY;
-				    }
-				});
-	        }
+            this._textBaseLine = (style.textBaseLine!=undefined)?style.textBaseLine:this._textBaseLine;
+            this._textAlign = (style.textAlign!=undefined)?style.textAlign:this._textAlign;
+            this._textStyle = (style.textStyle!=undefined)?style.textStyle:this._textStyle;
         }
 		       
 		this.redraw();
 	}
 
-	redraw() {
-		super.redraw();
+	pointerDownEvent(event) {
+		super.pointerDownEvent(event);
+        if (this._enableDragCell) {
+			let c = this._data.startCell;
+			let text = this._text[c.row][c.column];
+			text.style = text.style.clone();
+			text.style.fontWeight = "bold";
+			this._data.txtPt = text.toLocal(event.data.global)
+		}
+	}
 
+	pointerMoveEvent(event) {
+		super.pointerMoveEvent(event);
+	    if (this._dragging) {
+			let startPt = this._data.txtPt;
+			let c = this._data.startCell;
+			let text = this._text[c.row][c.column];
+			let pt = text.toLocal(event.data.global);
+		 	let dY = pt.y - startPt.y;
+		 	let dX = pt.x - startPt.x;
+			//console.log(pt, startPt, dX, dY);
+			text.x +=dX;
+			text.y +=dY;
+	    }
+	}
+
+	pointerUpEvent(event) {
+		if (this._dragging) {
+			let c = this._data.startCell;
+			this._text[c.row][c.column].style=this._textStyle;			
+		}
+		super.pointerUpEvent(event)
+	}
+
+    pointerOutEvent(event) {
+		if (this._dragging) {
+			let c = this._data.startCell;
+			this._text[c.row][c.column].style=this._textStyle;			
+		}
+		super.pointerOutEvent(event)
+    }
+
+    pointerUpOutsideEvent(event) {
+		if (this._dragging) {
+			let c = this._data.startCell;
+			this._text[c.row][c.column].style=this._textStyle;			
+		}
+		super.pointerUpOutsideEvent(event)
+    }
+
+	redraw() {
 		//避免super调用redraw时未初始化的问题
 		if (this._text===undefined) return;
+
+		// this._cell.redraw();
+		super.redraw();
 
 		//单元格中文本显示
 		let h = this._cellHeight;
 		let w = this._cellWidth;
 		let cols = this._column;
 		let rows = this._row;
-		let data = this._data;
+		let data = this._txtData;
 		for (let r = 0; r < rows; r++) {
 			if (this._text[r]==undefined) {
 				this._text[r] = new Array();				
 			}					
 			let y = r * h;
 			for (let c = 0; c < cols; c++) {
-				//let str = "[" + c + "," + r + "]";
-				let str = "[" + c + "," + r + "]";
-				str = data?data[r]?data[r][c]?data[r][c]:str:str:str;
+				let str = this.getText(c,r);
 				let txt = this._text[r][c];
 				if (txt==undefined) {
 					txt = new PIXI.Text(str, this._textStyle);
 					this._text[r][c] = this.addChild(txt);
 				} else {
 					txt.text = str;
+					txt.style = this._textStyle;
 				}
 
 				let x = c * w;
@@ -148,6 +153,13 @@ export class TextCell extends Cell {
 						break;
 				}
 			}
+			//绘制当前聚焦单元文本加粗
+			if (this._enableFocusCell && this._focusCell) {
+				let text = this._text[this._focusCell.row][this._focusCell.column];
+				text.style = text.style.clone();
+				text.style.fontWeight = "bold";
+			}
+
 		}
 	}
 
@@ -157,8 +169,18 @@ export class TextCell extends Cell {
 	 * @return {[type]}       [description]
 	 */
 	set text(value) {
-		this._data = value;			
+		this._txtData = value;			
 		this.redraw();
+	}
+
+	_setTextData(value, column, row) {
+		if (this._txtData==undefined) {
+			this._txtData = new Array();
+		}
+		if (this._txtData[row]==undefined) {
+			this._txtData[row] = new Array();
+		}
+		this._txtData[row][column] = value;
 	}
 
 	/**
@@ -169,17 +191,12 @@ export class TextCell extends Cell {
 	 */
 	setText(value, column, row) {
 		this._text[row][column].text = value;
-		if (this._data==undefined) {
-			this._data = new Array();
-		}
-		if (this._data[row]==undefined) {
-			this._data[row] = new Array();
-		}
-		this._data[row][column] = value;
+		this._setTextData(value, column, row)
 		this.redraw();
 	}
 	getText(column, row) {
-		return this._text[row][column].text;
+		let s = "[" + column + "," + row + "]"
+		return this._txtData?this._txtData[row]?this._txtData[row][column]?this._txtData[row][column]:s:s:s;
 	}
 
 	/**
@@ -252,7 +269,7 @@ export class TextCell extends Cell {
 	 * @return {[type]}       [description]
 	 */
 	getCurrentCell(event) {
-		let data = super.getCurrentCell(event);
+		let data = super._getCurrentCell(event);
 		if (data!=undefined && event.currentTarget._text!=undefined) {
 			data.text = event.currentTarget._text[data.row][data.column].text;
 		}

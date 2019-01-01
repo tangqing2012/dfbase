@@ -1,8 +1,9 @@
 /**
  * 标签类
  * @class
+ * @author David Tang<davidtang2018@163.com>
  * @extends PIXI.Text
- * @memberof DF
+ * @memberof DJ
  */
 export class Label extends PIXI.Text {
 	constructor(text, enableHover) {

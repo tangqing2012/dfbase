@@ -24,12 +24,14 @@ export const SCROLLBAR_ORIENTATION = {
  * 滚动条类
  * 包含：两个三角箭头按钮、滑动块，目前支持横向和纵向两种滚动条
  * @class
+ * @author David Tang<davidtang2018@163.com>
  * @extends PIXI.Container
- * @memberof DF
+ * @memberof DJ
  */
 export class ScrollBar extends PIXI.Container {
 	constructor(style) {
 		super()
+        this.interactive = true;
 
 		this._barWidth = SCROLLBAR_WIDTH;
 		this._barLength = 100;
@@ -40,11 +42,11 @@ export class ScrollBar extends PIXI.Container {
 		this._orientation = SCROLLBAR_ORIENTATION.HORIZONTAL;
 
 		if (style!=undefined) {
-			this._barWidth = style.barWidth || this._barWidth;
-			this._barLength = style.barLength || this._barLength;
-			this._contentLength = style.contentLength || this._contentLength;
-			this._unitIncrement = style.unitIncrement || this._unitIncrement;
-			this._orientation = style.orientation || this._orientation;
+			this._barWidth = style.barWidth!=undefined?style.barWidth:this._barWidth;
+			this._barLength = style.barLength!=undefined?style.barLength:this._barLength;
+			this._contentLength = style.contentLength!=undefined?style.contentLength:this._contentLength;
+			this._unitIncrement = style.unitIncrement!=undefined?style.unitIncrement:this._unitIncrement;
+			this._orientation = style.orientation!=undefined?style.orientation:this._orientation;
 		}
 		
         this._graphics = new PIXI.Graphics();
@@ -60,43 +62,39 @@ export class ScrollBar extends PIXI.Container {
 			const blockHead = this.isVertical ? b.y : b.x
 			const blockTail = this.isVertical ? b.y + b.height : b.x + b.width
 			if (pos < blockHead) {
-			 	//this._changeValue(e, this._value - this._blockIncrement);
 			 	this.value = this._value - this._blockIncrement;
 			}
 			if (pos > blockTail) {
-				//this._changeValue(e, this._value + this._blockIncrement);
 				this.value = this._value + this._blockIncrement;
 			}
+		 	//David: 阻止事件冒泡，触发其他控件干扰			 	
+			e.stopPropagation();
 		});
-        this.interactive = true;
 
 		if (this._orientation==SCROLLBAR_ORIENTATION.VERTICAL) {
-			this._headArrow = new ArrowButton(ARROW_ROTATION.UP, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2});
-			this._tailArrow = new ArrowButton(ARROW_ROTATION.DOWN, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2});
+			this._headArrow = new ArrowButton(ARROW_ROTATION.UP, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2, enableHover: true});
+			this._tailArrow = new ArrowButton(ARROW_ROTATION.DOWN, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2, enableHover: true});
 		} else {
-			this._headArrow = new ArrowButton(ARROW_ROTATION.LEFT, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2});				
-			this._tailArrow = new ArrowButton(ARROW_ROTATION.RIGHT, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2});			
+			this._headArrow = new ArrowButton(ARROW_ROTATION.LEFT, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2, enableHover: true});				
+			this._tailArrow = new ArrowButton(ARROW_ROTATION.RIGHT, {width: SCROLLBAR_WIDTH/1.15, height: SCROLLBAR_WIDTH/2, enableHover: true});			
 		}
 
 		this._headArrow.on("pointerdown", e => {
-			//this._changeValue(e, this._value - this._unitIncrement);
 			this.value = this._value - this._unitIncrement;
+		 	//David: 阻止事件冒泡，触发其他控件干扰			 	
 			e.stopPropagation();
 		})
-		this.addChild(this._headArrow)
-		
 		this._tailArrow.on("pointerdown", e => {
-			//this._changeValue(e, this._value + this._unitIncrement)
 			this.value = this._value + this._unitIncrement;
+		 	//David: 阻止事件冒泡，触发其他控件干扰			 	
 			e.stopPropagation();
 		})
-		this.addChild(this._tailArrow)
+		this.addChild(this._headArrow, this._tailArrow)
 		
-		this._block = new Shape({width: SCROLLBAR_WIDTH*0.8, height: SCROLLBAR_WIDTH*0.8});
-		this._block.setBackgroundColor(SHAPE_STATE.NORMAL, BAR_FOREGROUND_COLOR)
-		this._block.setBackgroundColor(SHAPE_STATE.FOCUS, BAR_FOREGROUND_COLOR)
-		this._block.setOutlineColors(SHAPE_STATE.NORMAL, 0xA0A0A0)
-		this._block.setOutlineColors(SHAPE_STATE.FOCUS, 0xA0A0A0)
+		//David: enableClick=false屏蔽Shape所有事件，自定义滑动块所有事件
+		this._block = new Shape({enableClick: false});
+		this._block.setBackgroundColor(SHAPE_STATE.NORMAL, BAR_FOREGROUND_COLOR);
+		this._block.setOutlineColors(SHAPE_STATE.NORMAL, BAR_FOREGROUND_COLOR);
 		this._block.on("pointerdown", e => {
 		    this._block.alpha = 0.6;
 		    this._dragging = true;
@@ -107,6 +105,8 @@ export class ScrollBar extends PIXI.Container {
 			 	y: pt.y,
 			 	value: this._value
 			}
+		 	//David: 阻止事件冒泡，触发其他控件干扰			 	
+			e.stopPropagation();
 		})
 		this._block.on("pointerup", e => {
 		    this._block.alpha = 1;
@@ -120,11 +120,16 @@ export class ScrollBar extends PIXI.Container {
 		    if (this._dragging) {
 				let pt = this.toLocal(e.data.global);;
 			 	const delta = this.isVertical ? pt.y - this._startPos.y : pt.x - this._startPos.x
-			 	//this._changeValue(e, this._startPos.value + this._positionToValue(delta));
 			 	this.value = this._startPos.value + this._positionToValue(delta);
-			 	//this.isVertical ? this._block.y + delta : this._block.x + delta;
+			 	//David: 阻止事件冒泡，触发其他控件干扰			 	
+		    	e.stopPropagation();
 		    }
 		})
+		// David: 按下滑块只要不松开，将不失去拖动事件
+		// this._block.on("pointerout", e=>{
+		//     this._block.alpha = 1;
+		// 	this._dragging = false;
+		// })
 		this.addChild(this._block);
 		this._reCalcBlock();
 		this.redraw();
@@ -144,9 +149,10 @@ export class ScrollBar extends PIXI.Container {
 	get value() {
 		return this._value;
 	}
-	set value(value) {
-		const oldValue = this.value;
-		const newValue = Math.max(0,Math.floor(Math.min(value, this._contentLength)));
+	set value(data) {
+		const oldValue = this._value;
+		//let d = (data!=undefined)?data:0;
+		const newValue = Math.max(0,Math.floor(Math.min(data, this._contentLength)));
 		if (oldValue != newValue) {
 			this._value = newValue;
 			this.redraw()
@@ -157,10 +163,10 @@ export class ScrollBar extends PIXI.Container {
 	 * 计算滑动块相关内部参数
 	 */
 	_reCalcBlock() {
-		const h = this._barLength - this._barWidth * 2
+		const h = Math.max(0,this._barLength - this._barWidth * 2);
 		this._blockIncrement = Math.max(this._unitIncrement, Math.min(this._contentLength / 2, this._barLength));
-		//滑动块最大占高度2/3
-		this._blockLength =  h * Math.max(0, Math.min(2/3, h / this._contentLength))
+		//David 2018-12-26：滑动块最大占高度2/3，最小为宽度滚动条
+		this._blockLength =  Math.max(this._barWidth,h * Math.max(0, Math.min(2/3, h / this._contentLength)));
 	}
 
 	/**
@@ -170,7 +176,10 @@ export class ScrollBar extends PIXI.Container {
 		return this._contentLength
 	}
 	set contentLength(length) {
-		this._contentLength = length
+		this._contentLength = length;
+		if (this._contentLength < this.value) {
+			this.value = this._contentLength
+		}
 		this._reCalcBlock();
 		this.redraw()
 	}
@@ -210,6 +219,10 @@ export class ScrollBar extends PIXI.Container {
 	}
 
 	redraw() {
+		//David：避免没有添加到父类容器，重绘报错！
+		if (!this.parent) {
+			return;
+		}
 		let g = this._graphics.clear()
 		g.beginFill(BAR_BACKGROUND_COLOR).lineStyle(0);
 		if (this.isVertical) {
@@ -229,19 +242,16 @@ export class ScrollBar extends PIXI.Container {
 	_drawBlock() {
 		const pos = this._maxPos*this._value/this._contentLength+this._barWidth;
 		if (this.isVertical) {
-			// this._block.setBounds(0, 0, this._barWidth * 0.8, this._blockLength)
-			this._block._width = this._barWidth * 0.9;
-			this._block._height = this._blockLength;
-			this._block.x = this._barWidth * 0.05;
+			this._block._width = this._barWidth-4;
+			this._block.x = 2;
 			this._block.y = pos;
+			this._block._height = this._blockLength-1;
 		} else {
-			// this._block.setBounds(0, 0, this._blockLength, this._barWidth*0.8)
-			this._block._width = this._blockLength;
-			this._block._height = this._barWidth * 0.9;
+			this._block._height = this._barWidth-4;
+			this._block.y = 2;
 			this._block.x = pos;
-			this._block.y = this._barWidth * 0.05;
+			this._block._width = this._blockLength;
 		}
-		//console.log(this._block);
 		this._block.redraw()
 	}
 

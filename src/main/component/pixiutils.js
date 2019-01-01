@@ -1,7 +1,8 @@
 ﻿/**
  * 工具类
  * @class
- * @memberof DF
+ * @author David Tang<davidtang2018@163.com>
+ * @memberof DJ
  */
 export class PixiUtils {
 
@@ -156,5 +157,15 @@ export class PixiUtils {
             });
         }   
     }
+
+    static changeIndex(o) {
+        let index = o.parent.getChildIndex(o)
+        let i = o.parent.children.length-1;
+        let child = o.parent.children[i];
+        o.parent.setChildIndex(o, i);
+        o.parent.setChildIndex(child, index);           
+    }
+
+
 
 }

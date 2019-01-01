@@ -3,9 +3,10 @@ export { Cell } from './cell';
 export { Label} from './label';
 export { TextCell, TEXT_BASE_LINE, TEXT_ALIGN } from './textcell';
 export { TextButton } from './textbutton';
-export { PixiUtils as utils } from "./pixiutils";
+export { PixiUtils as Utils } from "./pixiutils";
 export { ArrowButton, ARROW_ROTATION } from './arrowbutton';
 export { ScrollBar, SCROLLBAR_ORIENTATION } from './scrollbar';
 export { ScrollContainer } from './scrollcontainer';
+export { ToolWindow } from './toolwindow';
 
-global.DF = exports
+global.DJ = exports

@@ -1,7 +1,8 @@
 ﻿/**
  * 键盘响应类
  * @class
- * @memberof DF
+ * @author David Tang<davidtang2018@163.com>
+ * @memberof DJ
  */
 export class KeyBoard {
 	constructor(keyCode) {

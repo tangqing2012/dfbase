@@ -60,7 +60,8 @@ module.exports = {
 		]
 	},
 	externals: {
-		'pixi.js': 'pixi.js'
+		'pixi.js': 'pixi.js',
+		'Moment': 'moment'
 	}	
 };
 
