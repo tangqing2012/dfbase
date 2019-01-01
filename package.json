@@ -1,10 +1,10 @@
 {
-  "name": "DFBase",
+  "name": "DJBase",
   "version": "1.0.0",
-  "description": "DF Components from PIXI.js",
+  "description": "DJ Components from PIXI.js",
   "main": "index.js",
   "keywords": [
-    "DF",
+    "DJ",
     "pixijs",
     "aps"
   ],
